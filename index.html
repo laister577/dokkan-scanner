@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Dokkan Box Scanner</title>
+<style>
+:root{--bg:#0e1118;--card:#171c27;--card2:#1f2635;--tx:#e9edf5;--mut:#8b95a8;--acc:#ff8a1f;--ok:#3ccf7a;--warn:#f2b632;--bad:#ef5350;--bd:#2a3347;
+--AGL:#2f7cf6;--TEQ:#3fbf5f;--INT:#a45ee8;--STR:#e5484d;--PHY:#f0b429}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+body{padding-bottom:calc(70px + env(safe-area-inset-bottom))}
+header{position:sticky;top:0;z-index:5;background:var(--bg);padding:calc(10px + env(safe-area-inset-top)) 14px 8px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px}
+header h1{font-size:17px;margin:0;flex:1}
+header .chip{font-size:11px}
+main{padding:12px 12px 0;max-width:900px;margin:auto}
+section{display:none}section.on{display:block}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#0b0e14;border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom);z-index:6}
+nav button{flex:1;background:none;border:0;color:var(--mut);padding:10px 0 9px;font:600 12px system-ui}
+nav button b{display:block;font-size:19px;font-weight:400}
+nav button.on{color:var(--acc)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:12px}
+.card h2{margin:0 0 6px;font-size:15px}
+.card p{margin:4px 0;color:var(--mut);font-size:13px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button.b,label.b{background:var(--acc);color:#1a1004;border:0;border-radius:9px;padding:9px 13px;font:700 14px system-ui;display:inline-block;cursor:pointer}
+button.b.s,label.b.s{background:var(--card2);color:var(--tx);border:1px solid var(--bd)}
+button.b:disabled{opacity:.45}
+input[type=file]{display:none}
+input[type=text],input[type=number],select,textarea{background:var(--card2);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:8px;font:14px system-ui;width:100%}
+textarea{min-height:90px;font:12px monospace}
+.chip{display:inline-block;border-radius:99px;padding:2px 9px;background:var(--card2);color:var(--mut);font-size:12px;border:1px solid var(--bd)}
+.chip.ok{color:var(--ok);border-color:#1f5c3a}.chip.warn{color:var(--warn);border-color:#6b5415}.chip.bad{color:var(--bad);border-color:#6b2523}
+.bar{height:8px;border-radius:5px;background:var(--card2);overflow:hidden;margin:6px 0}
+.bar i{display:block;height:100%;width:0;background:var(--acc);transition:width .15s}
+.log{font:12px/1.5 ui-monospace,monospace;color:var(--mut);max-height:150px;overflow:auto;white-space:pre-wrap}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:8px}
+.tile{position:relative;border-radius:9px;overflow:hidden;background:var(--card2);border:2px solid var(--bd);aspect-ratio:1;cursor:pointer}
+.tile img{width:100%;height:100%;object-fit:cover;display:block}
+.tile .v{position:absolute;right:2px;top:2px;font-size:15px;text-shadow:0 0 3px #000}
+.tile .d{position:absolute;left:2px;bottom:2px;font-size:10px;background:#000a;border-radius:4px;padding:0 4px}
+.tile.AGL{border-color:var(--AGL)}.tile.TEQ{border-color:var(--TEQ)}.tile.INT{border-color:var(--INT)}.tile.STR{border-color:var(--STR)}.tile.PHY{border-color:var(--PHY)}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.filters .chip{cursor:pointer;user-select:none}.filters .chip.on{background:var(--acc);color:#1a1004;border-color:var(--acc)}
+.modal{position:fixed;inset:0;background:#000b;z-index:20;display:none;align-items:flex-end;justify-content:center}
+.modal.on{display:flex}
+.sheet{background:var(--card);border-radius:16px 16px 0 0;max-height:88vh;overflow:auto;width:100%;max-width:700px;padding:14px 14px calc(20px + env(safe-area-inset-bottom))}
+.sheet .hero{display:flex;gap:12px;align-items:center;margin-bottom:8px}
+.sheet .hero img{width:84px;height:84px;border-radius:10px;border:2px solid var(--bd)}
+.kv{font-size:13px;margin:6px 0}.kv b{color:var(--acc)}
+.pill{display:inline-block;font-size:11px;border-radius:5px;padding:1px 6px;margin:1px 3px 1px 0;background:var(--card2);color:var(--mut)}
+.v-gem{color:#7df}.v-bon{color:var(--ok)}.v-util{color:var(--warn)}.v-faible{color:#ff9d57}.v-fodder{color:var(--bad)}
+.team{display:flex;gap:6px;overflow-x:auto;padding:4px 0}
+.team .tile{flex:0 0 62px}
+.team .tile.ld{outline:2px solid var(--acc)}
+.rev{display:flex;gap:8px;align-items:center;border-bottom:1px solid var(--bd);padding:8px 0}
+.rev canvas,.rev img.t{width:58px;height:58px;border-radius:7px;object-fit:cover;background:#000;flex:0 0 58px}
+.rev .alts{display:flex;gap:5px;flex-wrap:wrap}
+.rev .alts img{width:50px;height:50px;border-radius:7px;border:2px solid var(--bd);cursor:pointer}
+details summary{cursor:pointer;color:var(--mut);font-size:13px;margin:6px 0}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.g2 label{font-size:12px;color:var(--mut)}
+#prev{width:100%;border-radius:10px;border:1px solid var(--bd);margin-top:8px;display:none}
+.empty{color:var(--mut);text-align:center;padding:24px 8px}
+</style>
+</head>
+<body>
+<header><h1>Dokkan Box Scanner</h1><span class="chip" id="hdrBox">0 persos</span></header>
+<main>
+
+<!-- ============ SCAN ============ -->
+<section id="t-scan" class="on">
+  <div class="card">
+    <h2>1 · Base de données des persos</h2>
+    <p id="dbStat">Chargement…</p>
+    <div class="row"><button class="b s" id="btnDb">Recharger</button>
+      <label class="b s">Charger cards.json<input type="file" id="fileCards" accept=".json,application/json"></label></div>
+  </div>
+
+  <div class="card">
+    <h2>2 · Miniatures de référence</h2>
+    <p id="thStat">Pas encore indexées.</p>
+    <div class="bar"><i id="thBar"></i></div>
+    <div class="row"><button class="b" id="btnThumbs">Indexer en ligne</button>
+      <label class="b s">Importer zip / images<input type="file" id="fileThumbs" multiple accept=".zip,image/*"></label></div>
+    <p>Indexation faite une seule fois (gardée dans le navigateur). Si le téléchargement est bloqué, importe un zip de miniatures dont les fichiers contiennent l'ID de carte (ex. <i>card_1002350_thumb.png</i> ou <i>1002350.png</i>).</p>
+  </div>
+
+  <div class="card">
+    <h2>3 · Tes captures de box</h2>
+    <p>Dans le jeu : Équipe → Liste des persos, trie par rareté (LR/UR en premier), puis capture l'écran en faisant défiler. Plein écran, sans recadrer. Un léger chevauchement entre captures ne pose pas de problème (doublons fusionnés).</p>
+    <div class="row"><label class="b">Ajouter des captures<input type="file" id="fileShots" multiple accept="image/*"></label>
+      <button class="b s" id="btnClear">Vider ma box</button></div>
+    <div class="bar"><i id="shBar"></i></div>
+    <div class="log" id="log"></div>
+    <canvas id="prev"></canvas>
+    <details><summary>Réglages de la grille (si la détection rate)</summary>
+      <div class="g2">
+        <div><label>Colonnes</label><input type="number" id="gCols" step="1" min="1" max="8"></div>
+        <div><label>Marge gauche (% largeur)</label><input type="number" id="gX0" step="0.1"></div>
+        <div><label>Taille case (% largeur)</label><input type="number" id="gCw" step="0.1"></div>
+        <div><label>Pas horizontal (% largeur)</label><input type="number" id="gPx" step="0.1"></div>
+        <div><label>Pas vertical (% largeur)</label><input type="number" id="gPy" step="0.1"></div>
+        <div><label>Seuil d'acceptation (0-100)</label><input type="number" id="gTh" step="1" min="10" max="95"></div>
+      </div>
+      <div class="row" style="margin-top:8px"><button class="b s" id="btnRerun">Relancer avec ces réglages (sans auto-calibrage)</button>
+      <button class="b s" id="btnRecal">Relancer avec auto-calibrage</button></div>
+    </details>
+  </div>
+
+  <div class="card" id="revCard" style="display:none">
+    <h2>À vérifier <span class="chip" id="revN"></span></h2>
+    <p>Reconnaissances peu sûres : touche la bonne miniature, ou ignore.</p>
+    <div id="revList"></div>
+  </div>
+</section>
+
+<!-- ============ BOX ============ -->
+<section id="t-box">
+  <div class="filters" id="fR"></div>
+  <div class="filters" id="fT"></div>
+  <div class="filters" id="fV"></div>
+  <input type="text" id="q" placeholder="Rechercher un perso (nom, titre, catégorie…)" style="margin-bottom:10px">
+  <div class="grid" id="boxGrid"></div>
+  <details class="card" style="margin-top:14px"><summary>Partager / sauvegarder ma box</summary>
+    <textarea id="exp" readonly></textarea>
+    <div class="row" style="margin:8px 0"><button class="b s" id="btnCopy">Copier</button></div>
+    <textarea id="imp" placeholder="Colle ici une box exportée (la tienne ou celle d'un pote)"></textarea>
+    <div class="row" style="margin-top:8px"><button class="b s" id="btnImp">Importer (fusionne)</button></div>
+  </details>
+</section>
+
+<!-- ============ TEAMS ============ -->
+<section id="t-teams">
+  <div class="card"><h2>Meilleures teams possibles</h2>
+    <p>Calculées avec les persos de ta box : leader skill (catégories / types), liens partagés et force des persos (tier list). Le 6e (ami) = un second exemplaire du leader.</p>
+    <div class="row"><button class="b" id="btnTeams">Recalculer</button>
+      <select id="ldSel" style="flex:1"><option value="">Meilleur leader automatique</option></select></div>
+  </div>
+  <div id="teamsOut"></div>
+</section>
+
+<!-- ============ BILAN ============ -->
+<section id="t-bilan"><div id="bilanOut"></div></section>
+</main>
+
+<nav>
+  <button data-t="scan" class="on"><b>📷</b>Scanner</button>
+  <button data-t="box"><b>🗃️</b>Ma box</button>
+  <button data-t="teams"><b>⚔️</b>Teams</button>
+  <button data-t="bilan"><b>📊</b>Bilan</button>
+</nav>
+
+<div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
+<script>
+'use strict';
+/* =========================================================================
+   Dokkan Box Scanner — 100 % côté navigateur
+   Données  : cards.json / extra.json (projet public waltz4replica/dokkandb, via dokkan.fyi + DokkanStats)
+   Images   : miniatures de cartes pour la reconnaissance (cdn dokkan.fyi) — usage personnel
+   ========================================================================= */
+const RAW = 'https://raw.githubusercontent.com/waltz4replica/dokkandb/main/data/';
+const THUMB_URLS = [
+  id => `https://cdn.dokkan.fyi/assets/en/character/thumb/card_${id}_thumb/card_${id}_thumb.png`,
+  id => `https://assets.dokkanstats.com/assets/global/en/character/thumb/card_${id}_thumb/card_${id}_thumb.png`
+];
+const D1 = 14, D2 = 7, L1 = D1*D1*3, L2 = D2*D2*3;
+const REG = {x0:.16, x1:.84, y0:.10, y1:.72};          // zone centrale de la case utilisée pour comparer
+const CACHE_VER = 'v2-' + [REG.x0,REG.x1,REG.y0,REG.y1,D1,D2].join('_');
+const WORK_W = 540;                                    // largeur de travail des captures
+const $ = s => document.querySelector(s);
+const tick = () => new Promise(r => setTimeout(r, 0));
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+
+/* ---------- petits utilitaires ---------- */
+const _ta = document.createElement('textarea');
+const dec = s => { _ta.innerHTML = s || ''; return _ta.value; };
+const txt = h => dec((h||'').replace(/<br\s*\/?>/gi,'\n').replace(/<hr\s*\/?>/gi,'\n').replace(/<[^>]+>/g,'')).trim();
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function log(m){ const l=$('#log'); l.textContent += m + '\n'; l.scrollTop = l.scrollHeight; }
+
+/* ---------- stockage (IndexedDB si possible) ---------- */
+const kv = {
+  db:null,
+  async open(){ if(this.db) return this.db; return this.db = await new Promise((res,rej)=>{ try{ const r=indexedDB.open('dokkan-scanner',1); r.onupgradeneeded=()=>r.result.createObjectStore('kv'); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error);}catch(e){rej(e);} }); },
+  async get(k){ try{ const db=await this.open(); return await new Promise((res,rej)=>{ const q=db.transaction('kv').objectStore('kv').get(k); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); }); }catch(e){ return undefined; } },
+  async set(k,v){ try{ const db=await this.open(); await new Promise((res,rej)=>{ const t=db.transaction('kv','readwrite'); t.objectStore('kv').put(v,k); t.oncomplete=res; t.onerror=()=>rej(t.error); }); return true; }catch(e){ return false; } }
+};
+
+/* =========================================================================
+   1. BASE DE DONNÉES
+   ========================================================================= */
+const DB = { cards:[], byId:new Map(), linkFx:{}, tier:new Map(), tierGen:'' };
+const TIER_SCORE = {'S++':100,'S+':92,'S':85,'S-':78,'A+':70,'A':62,'A-':55,'B+':48,'B':40,'B-':33};
+const RAR_SCORE = {LR:25, UR:12, SSR:0};
+
+function ingestCards(j){
+  DB.cards = j.cards || []; DB.byId = new Map(DB.cards.map(c => [String(c.id), c]));
+  DB.linkFx = {}; for(const [k,v] of Object.entries(j.links||{})) DB.linkFx[k] = dec(v);
+  for(const c of DB.cards){ c._lead = parseLeader(c.leader && c.leader.base); c._leadEza = c.leader && c.leader.eza ? parseLeader(c.leader.eza) : null;
+    c._ls = Math.max(0, ...c._lead.map(x => x.score)); c._cats = new Set(c.categories||[]); c._links = c.links||[]; }
+}
+function ingestExtra(j){
+  DB.tier = new Map(); const tl = j && j.tierlist && j.tierlist.tiers || [];
+  for(const t of tl) for(const u of t.units||[]) DB.tier.set(String(u.cardId), t.tier);
+  DB.tierGen = j && j.generated || '';
+}
+async function loadDb(force){
+  const st = $('#dbStat'); st.textContent = 'Chargement de la base…';
+  let cards = null, extra = null;
+  try{
+    const [a,b] = await Promise.all([fetch(RAW+'cards.json',{cache:'no-cache'}), fetch(RAW+'extra.json',{cache:'no-cache'})]);
+    if(!a.ok) throw new Error('cards.json HTTP '+a.status);
+    cards = await a.json(); extra = b.ok ? await b.json() : null;
+    kv.set('cards', cards); if(extra) kv.set('extra', extra);
+  }catch(e){
+    log('Base en ligne indisponible ('+e.message+') → copie locale.');
+    cards = await kv.get('cards'); extra = await kv.get('extra');
+  }
+  if(!cards){ st.innerHTML = '<span class="chip bad">Base introuvable</span> Connecte-toi ou charge cards.json à la main.'; return false; }
+  ingestCards(cards); ingestExtra(extra);
+  st.innerHTML = `<span class="chip ok">${DB.cards.length} cartes</span> <span class="chip ${DB.tier.size?'ok':'warn'}">tier list : ${DB.tier.size} persos</span> <span class="chip">maj ${esc((cards.generated||'').slice(0,10))}</span>`;
+  return true;
+}
+
+/* =========================================================================
+   2. LEADER SKILLS / SCORES / VERDICTS
+   ========================================================================= */
+function parseLeader(raw){
+  const t = dec(raw||''); if(!t) return [];
+  return t.split(/;\s*(?:or\s+)?/i).map(s=>s.trim()).filter(Boolean).map(p=>{
+    const cats = [...p.matchAll(/"([^"]+)"/g)].map(m=>m[1]);
+    const types = [...new Set(p.replace(/"[^"]*"/g,'').match(/\b(AGL|TEQ|INT|STR|PHY)\b/g)||[])];
+    if(/enem/i.test(p)) return {cats:[], types:[], all:false, pct:0, ki:0, stats:0, score:0, text:p, enemy:true};      // leaders « ennemis » : pas un buff d'équipe
+    const all = /all types/i.test(p) || (!cats.length && !types.length);
+    const mp = p.match(/\+\s*(\d+)\s*%/) || p.match(/by\s+(\d+)\s*%/i);
+    const pct = mp ? +mp[1] : 0;
+    const ki = +((p.match(/Ki\s*\+\s*(\d+)/i)||[0,0])[1]);
+    const pre = p.split(/\+\s*\d+\s*%/)[0] || p;
+    let stats = (/HP/i.test(pre)?1:0) + (/ATK/i.test(pre)?1:0) + (/DEF/i.test(pre)?1:0); if(!stats) stats = 1;
+    return {cats, types, all, pct, ki, stats, score: pct*stats + ki*15, text:p};
+  });
+}
+const tierOf = c => DB.tier.get(String(c.id));
+const tierScore = c => TIER_SCORE[tierOf(c)] || 0;
+function fits(u, cl){ return cl.all || (cl.types.length && cl.types.includes(u.type)) || (cl.cats.length && cl.cats.some(x => u._cats.has(x))); }
+function buffFor(u, clauses){ let b=0; for(const cl of clauses) if(fits(u,cl)) b = Math.max(b, cl.score); return b; }
+const stripTitle = c => (c.name||'') + ' — ' + (c.title||'');
+
+function verdict(c, info){
+  const ts = tierScore(c), ls = c._ls, r = [];
+  const t = tierOf(c);
+  if(t) r.push('Tier list : '+t);
+  if(ls >= 450) r.push('Leader skill très fort'); else if(ls >= 300) r.push('Leader skill correct');
+  let k, label, icon;
+  if(ts >= 85){ k='gem'; label='Pépite'; icon='💎'; }
+  else if(ts >= 55 || ls >= 500 || (c.rarity==='LR' && ls >= 450)){ k='bon'; label='Bon à jouer'; icon='✅'; }
+  else if(c.rarity==='SSR'){ k='fodder'; label='Fodder (à vendre / farm)'; icon='🗑️'; }
+  else if(ts > 0 || ls >= 300 || c.rarity==='LR'){ k='util'; label='Correct / support'; icon='🟡'; }
+  else { k='faible'; label='Faible (hors tier list)'; icon='⬇️'; }
+  const flags = [];
+  if(info && info.pre){ flags.push('Pas encore éveillé (Dokkan Awakening)'); if(ts>=62 || c.rarity==='LR' || ls>=450) flags.push('FORT POTENTIEL dormant → à éveiller'); }
+  if(c.eza){ flags.push('Z-Éveil (EZA) disponible'+(ts>=55?' — vaut le coup':'')); if(c._leadEza) flags.push('Leader EZA : '+c._leadEza.map(x=>x.text).join(' ; ')); }
+  return {k, label, icon, reasons:r, flags, ts, ls};
+}
+
+/* =========================================================================
+   3. BOX (persistée)
+   ========================================================================= */
+let BOX = new Map();   // id -> {n, pre}
+function saveBox(){ try{ localStorage.setItem('dokkan.box', JSON.stringify([...BOX])); }catch(e){} $('#hdrBox').textContent = BOX.size + ' persos'; }
+function loadBox(){ try{ BOX = new Map(JSON.parse(localStorage.getItem('dokkan.box')||'[]')); }catch(e){ BOX = new Map(); } $('#hdrBox').textContent = BOX.size + ' persos'; }
+function addToBox(id, pre){
+  id = String(id); const e = BOX.get(id);
+  if(!e) BOX.set(id, {n:1, pre:!!pre}); else { e.pre = e.pre && !!pre; }   // la forme éveillée l'emporte
+}
+const ownedCards = () => [...BOX].map(([id,i]) => ({c:DB.byId.get(id), i})).filter(x => x.c);
+
+/* =========================================================================
+   4. VISION : descripteurs par intégrale d'image
+   ========================================================================= */
+function buildSAT(d, w, h){
+  const W1 = w+1, s = new Float64Array(W1*(h+1)*3);
+  for(let y=0;y<h;y++){ let r=0,g=0,b=0;
+    for(let x=0;x<w;x++){ const i=(y*w+x)*4; r+=d[i]; g+=d[i+1]; b+=d[i+2];
+      const o=((y+1)*W1+x+1)*3, u=(y*W1+x+1)*3; s[o]=s[u]+r; s[o+1]=s[u+1]+g; s[o+2]=s[u+2]+b; } }
+  return {s, w, h, W1};
+}
+function descr(sat, x, y, w, h, D){
+  const out = new Float32Array(D*D*3), {s,W1,w:SW,h:SH} = sat; let k=0, mean=0;
+  for(let j=0;j<D;j++){ const ya = clamp(Math.round(y+j*h/D),0,SH-1), yb = clamp(Math.max(ya+1,Math.round(y+(j+1)*h/D)),ya+1,SH);
+    for(let i=0;i<D;i++){ const xa = clamp(Math.round(x+i*w/D),0,SW-1), xb = clamp(Math.max(xa+1,Math.round(x+(i+1)*w/D)),xa+1,SW), area=(xb-xa)*(yb-ya);
+      for(let c=0;c<3;c++){ const v=(s[(yb*W1+xb)*3+c]-s[(ya*W1+xb)*3+c]-s[(yb*W1+xa)*3+c]+s[(ya*W1+xa)*3+c])/area; out[k++]=v; mean+=v; } } }
+  mean /= out.length; let n=0; for(let i=0;i<out.length;i++){ out[i]-=mean; n+=out[i]*out[i]; }
+  n = Math.sqrt(n); out.std = n/Math.sqrt(out.length);
+  if(n < 1e-3){ out.fill(0); return out; } for(let i=0;i<out.length;i++) out[i]/=n; return out;
+}
+const regionOf = (x,y,w,h) => [x+REG.x0*w, y+REG.y0*h, (REG.x1-REG.x0)*w, (REG.y1-REG.y0)*h];
+function cellDescr(sat, x, y, w, h, D){ const r = regionOf(x,y,w,h); return descr(sat, r[0], r[1], r[2], r[3], D); }
+function dot(a, V, o, L){ let s=0; for(let k=0;k<L;k++) s += a[k]*V[o+k]; return s; }
+
+/* ---------- index de miniatures ---------- */
+const T = {n:0, ids:[], owner:[], pre:[], v1:new Float32Array(0), v2:new Float32Array(0), s1:new Float32Array(0), s2:new Float32Array(0)};
+// pénalité de contraste : une case et sa miniature doivent avoir une énergie visuelle comparable (écarte fonds et zones plates)
+const pen = (a, b) => { if(!(b > 1e-3) || !(a > 1e-3)) return 0; const r = a/b; return Math.sqrt(r < 1 ? r : 1/r); };
+function candidateList(){
+  const m = new Map();       // id miniature -> {owner, pre}
+  for(const c of DB.cards){ m.set(String(c.id), {owner:String(c.id), pre:false});
+    for(const p of (c.awakensFrom||[])){ if(!m.has(String(p))) m.set(String(p), {owner:String(c.id), pre:true}); } }
+  return [...m].map(([id,v]) => ({id, ...v}));
+}
+function bitmapToVecs(bmp){
+  const cv = document.createElement('canvas'), W = Math.min(bmp.width, 192), H = Math.round(bmp.height*W/bmp.width);
+  cv.width = W; cv.height = H; const g = cv.getContext('2d', {willReadFrequently:true});
+  g.fillStyle = '#20242e'; g.fillRect(0,0,W,H); g.imageSmoothingQuality='high'; g.drawImage(bmp,0,0,W,H);
+  const sat = buildSAT(g.getImageData(0,0,W,H).data, W, H);
+  return [cellDescr(sat,0,0,W,H,D1), cellDescr(sat,0,0,W,H,D2)];
+}
+function finalizeIndex(list){      // list: [{id,owner,pre,v1,v2}]
+  T.n = list.length; T.ids = list.map(x=>x.id); T.owner = list.map(x=>x.owner); T.pre = list.map(x=>x.pre);
+  T.v1 = new Float32Array(T.n*L1); T.v2 = new Float32Array(T.n*L2); T.s1 = new Float32Array(T.n); T.s2 = new Float32Array(T.n);
+  list.forEach((x,i)=>{ T.v1.set(x.v1, i*L1); T.v2.set(x.v2, i*L2); T.s1[i] = x.v1.std||0; T.s2[i] = x.v2.std||0; });
+  const bad = list.filter(x => !x.v1.some(v => v)).length;
+  $('#thStat').innerHTML = `<span class="chip ${T.n?'ok':'bad'}">${T.n} miniatures indexées</span>` + (bad?` <span class="chip warn">${bad} vides</span>`:'');
+}
+async function saveIndex(list){
+  await kv.set('index-'+CACHE_VER, {ids:list.map(x=>x.id), owner:list.map(x=>x.owner), pre:list.map(x=>x.pre),
+    v1:T.v1.buffer.slice(0), v2:T.v2.buffer.slice(0), s1:T.s1.buffer.slice(0), s2:T.s2.buffer.slice(0)});
+}
+async function loadIndexCache(){
+  const d = await kv.get('index-'+CACHE_VER); if(!d || !d.ids || !d.ids.length || !d.s1) return false;
+  T.n = d.ids.length; T.ids=d.ids; T.owner=d.owner; T.pre=d.pre; T.v1=new Float32Array(d.v1); T.v2=new Float32Array(d.v2); T.s1=new Float32Array(d.s1); T.s2=new Float32Array(d.s2);
+  $('#thStat').innerHTML = `<span class="chip ok">${T.n} miniatures indexées</span> <span class="chip">cache local</span>`; return true;
+}
+async function fetchBitmap(id){
+  let lastErr;
+  for(const f of THUMB_URLS){
+    try{ const r = await fetch(f(id), {mode:'cors'}); if(!r.ok){ lastErr = new Error('HTTP '+r.status); continue; }
+      return await createImageBitmap(await r.blob()); }catch(e){ lastErr = e; }
+  }
+  throw lastErr || new Error('échec');
+}
+async function indexOnline(){
+  if(!DB.cards.length){ alert('Charge d\'abord la base.'); return; }
+  const cand = candidateList(), out = new Array(cand.length); let done=0, ok=0, fail=0, abort=false;
+  const bar = $('#thBar'), st = $('#thStat'); $('#btnThumbs').disabled = true;
+  // test de faisabilité sur 3 images (CORS / réseau)
+  let probe = 0; for(const c of cand.slice(0,3)){ try{ await fetchBitmap(c.id); probe++; }catch(e){ log('Test miniature '+c.id+' : '+e.message); } }
+  if(!probe){
+    st.innerHTML = '<span class="chip bad">Téléchargement bloqué</span> Le site des miniatures refuse l\'accès depuis le navigateur (CORS / réseau). Utilise « Importer zip / images ».';
+    $('#btnThumbs').disabled = false; return;
+  }
+  let idx = 0;
+  async function worker(){ while(!abort){ const i = idx++; if(i >= cand.length) return; const c = cand[i];
+    try{ const bmp = await fetchBitmap(c.id); const [v1,v2] = bitmapToVecs(bmp); bmp.close && bmp.close(); out[i] = {...c, v1, v2}; ok++; }
+    catch(e){ fail++; }
+    done++; if(done % 20 === 0 || done === cand.length){ bar.style.width = (100*done/cand.length)+'%'; st.textContent = `Indexation… ${done}/${cand.length} (échecs : ${fail})`; await tick(); } } }
+  await Promise.all(Array.from({length:8}, worker));
+  const list = out.filter(Boolean);
+  finalizeIndex(list); await saveIndex(list);
+  log(`Miniatures : ${ok} ok, ${fail} échecs.`); $('#btnThumbs').disabled = false;
+}
+async function indexFromFiles(files){
+  if(!DB.cards.length){ alert('Charge d\'abord la base.'); return; }
+  const wanted = new Map(candidateList().map(c => [c.id, c])); const found = []; const bar=$('#thBar');
+  const handle = async (name, blob) => { const m = name.match(/(\d{7})/); if(!m || !wanted.has(m[1])) return;
+    const bmp = await createImageBitmap(blob); const [v1,v2] = bitmapToVecs(bmp); found.push({...wanted.get(m[1]), v1, v2}); wanted.delete(m[1]); };
+  let n = 0;
+  for(const f of files){
+    if(/\.zip$/i.test(f.name)){
+      if(!window.JSZip){ alert('JSZip indisponible (connexion ?)'); return; }
+      const z = await JSZip.loadAsync(f); const entries = Object.values(z.files).filter(e => !e.dir && /\.(png|jpe?g|webp)$/i.test(e.name)); let k=0;
+      for(const e of entries){ try{ await handle(e.name, await e.async('blob')); }catch(_){} if(++k % 30 === 0){ bar.style.width=(100*k/entries.length)+'%'; $('#thStat').textContent=`Lecture du zip… ${k}/${entries.length}`; await tick(); } }
+    } else { try{ await handle(f.name, f); }catch(_){} if(++n % 30 === 0) await tick(); }
+  }
+  if(!found.length){ $('#thStat').innerHTML = '<span class="chip bad">Aucune miniature reconnue</span> (noms de fichiers sans ID de carte à 7 chiffres ?)'; return; }
+  finalizeIndex(found); await saveIndex(found); bar.style.width='100%';
+}
+
+/* ---------- appariement ---------- */
+function matchDescr(q2, q1){
+  const dots = new Float32Array(T.n);
+  for(let i=0,o=0;i<T.n;i++,o+=L2) dots[i] = dot(q2, T.v2, o, L2)*pen(q2.std, T.s2[i]);
+  const order = Array.from({length:T.n}, (_,i)=>i).sort((a,b)=>dots[b]-dots[a]).slice(0,40);
+  const sc = order.map(i => [i, dot(q1, T.v1, i*L1, L1)*pen(q1.std, T.s1[i])]).sort((a,b)=>b[1]-a[1]);
+  const seen = new Set(), alts = [];
+  for(const [i,s] of sc){ const ow = T.owner[i]; if(seen.has(ow)) continue; seen.add(ow); alts.push({owner:ow, pre:T.pre[i], score:s}); if(alts.length>=4) break; }
+  return alts;
+}
+
+/* =========================================================================
+   5. CAPTURES : grille + calibration
+   ========================================================================= */
+const G = {cols:5, x0:.0271, cw:.1403, px:.2016, ch:.1395, py:.2333, y0:0, calibrated:false};
+const P = {accept:55, uncertain:38};
+function syncGridInputs(){ $('#gCols').value=G.cols; $('#gX0').value=(G.x0*100).toFixed(2); $('#gCw').value=(G.cw*100).toFixed(2); $('#gPx').value=(G.px*100).toFixed(2); $('#gPy').value=(G.py*100).toFixed(2); $('#gTh').value=P.accept; }
+function readGridInputs(){ G.cols=Math.max(1,+$('#gCols').value||5); G.x0=(+$('#gX0').value||2.7)/100; G.cw=(+$('#gCw').value||14)/100; G.ch=G.cw*0.994; G.px=(+$('#gPx').value||20)/100; G.py=(+$('#gPy').value||23)/100; P.accept=+$('#gTh').value||55; }
+
+function cellRects(g, Wp, Hp, yc){            // yc = ordonnée d'une ligne de référence ; les autres = yc + r*pas
+  const out = [], pitch = g.py*Wp, h = g.ch*Wp, w = g.cw*Wp;
+  const r0 = -Math.ceil(yc/pitch) - 1, r1 = Math.ceil((Hp-yc)/pitch) + 1;
+  for(let r=r0; r<=r1; r++){ const y = yc + r*pitch; if(y < -2 || y + h > Hp + 2) continue;
+    for(let c=0;c<g.cols;c++){ const x = (g.x0 + c*g.px)*Wp; if(x >= -2 && x + w <= Wp + 2) out.push({r, c, x, y, w, h}); } }
+  return out;
+}
+function bestCoarse(q){ if(q.std < 8) return 0; let b=-1; for(let i=0,o=0;i<T.n;i++,o+=L2){ const s = dot(q, T.v2, o, L2)*pen(q.std, T.s2[i]); if(s>b) b=s; } return b; }
+function topCoarse(q, K){ const d = new Float32Array(T.n); for(let i=0,o=0;i<T.n;i++,o+=L2) d[i] = dot(q, T.v2, o, L2)*pen(q.std, T.s2[i]);
+  const ord = Array.from({length:T.n},(_,i)=>i).sort((a,b)=>d[b]-d[a]); return {idx:ord.slice(0,K), best:d[ord[0]]}; }
+
+// Évalue une géométrie sur un ensemble de cases (r,c) avec leurs candidats : moyenne des meilleurs scores.
+function evalGeom(sat, Wp, g, yc, cells, cand){
+  let tot = 0; const pitch = g.py*Wp;
+  cells.forEach((c, k) => { const x = (g.x0 + c.c*g.px)*Wp, y = yc + c.r*pitch, w = g.cw*Wp, h = g.ch*Wp;
+    const q = cellDescr(sat, x, y, w, h, D1); let b = -1; for(const i of cand[k]){ const s = dot(q, T.v1, i*L1, L1)*pen(q.std, T.s1[i]); if(s > b) b = s; } tot += b; });
+  return tot / cells.length;
+}
+async function calibrate(sat, Wp, Hp, mode){           // mode : 'full' (apprend toute la grille) | 'light' (ligne de réf. + lignes) | 'yonly'
+  const pitch = G.py*Wp, step = Math.max(2, 0.006*Wp);
+  // A. ligne de référence : on balaie yc autour du centre de l'image sur un pas de grille (lignes -1, 0, +1)
+  let yc = Hp/2, bestA = -9;
+  for(let o=-pitch/2; o<pitch/2; o+=step){
+    const y = Hp/2 + o, cells = cellRects(G, Wp, Hp, y).filter(c => Math.abs(c.r) <= 1); if(!cells.length) continue;
+    let s = 0; for(const c of cells) s += bestCoarse(cellDescr(sat,c.x,c.y,c.w,c.h,D2)); s /= cells.length;
+    if(s > bestA){ bestA = s; yc = y; } await tick();
+  }
+  if(mode === 'yonly'){ G.y0 = yc; return {y0:yc, score:bestA}; }
+  // A2/A3. glissement par colonne puis par ligne, noté sur un petit « pool » de candidats (descripteur fin D1) — beaucoup plus discriminant
+  const w0 = G.cw*Wp, h0 = G.ch*Wp, W = Wp, lsq = pts => { const n = pts.length, sx = pts.reduce((a,p)=>a+p[0],0), sy = pts.reduce((a,p)=>a+p[1],0),
+      sxx = pts.reduce((a,p)=>a+p[0]*p[0],0), sxy = pts.reduce((a,p)=>a+p[0]*p[1],0), d = n*sxx - sx*sx; if(!n || Math.abs(d) < 1e-9) return null;
+      const m = (n*sxy - sx*sy)/d; return {m, b:(sy - m*sx)/n}; };
+  const gs = {...G}, TH = 0.6;
+  // pool de candidats construit AU PLUS PRÈS de la position prédite (descripteur grossier), puis recherche fine par glissement
+  const poolAt = pos => { const set = new Set(); for(const [x,y] of pos){ if(x < 0 || y < 0 || x + w0 > Wp || y + h0 > Hp) continue; for(const i of topCoarse(cellDescr(sat,x,y,w0,h0,D2), 30).idx) set.add(i); } return [...set]; };
+  const scoreAt = (poolIdx, x, y) => { if(x < 0 || y < 0 || x + w0 > Wp || y + h0 > Hp) return -1; const q = cellDescr(sat,x,y,w0,h0,D1); if(q.std < 8) return 0;
+    let b = -1; for(const i of poolIdx){ const s = dot(q, T.v1, i*L1, L1)*pen(q.std, T.s1[i]); if(s > b) b = s; } return b; };
+  if(mode === 'full'){                                 // colonnes : de gauche à droite, chacune prédite depuis la précédente
+    const xs = []; let pxe = G.px, xp = G.x0*W;
+    for(let c=0;c<G.cols;c++){
+      const pool = poolAt([-1,0,1].map(r => [xp, yc + r*pitch])); let bx = null, bs = TH;
+      for(let dx=-0.035; dx<=0.0351; dx+=0.004){ let s = 0, n = 0; for(const r of [-1,0,1]){ const v = scoreAt(pool, xp + dx*W, yc + r*pitch); if(v >= 0){ s += v; n++; } }
+        if(n && s/n > bs){ bs = s/n; bx = xp + dx*W; } }
+      if(bx != null){ xs.push([c, bx/W]); if(xs.length >= 2) pxe = (xs[xs.length-1][1] - xs[0][1])/(xs[xs.length-1][0] - xs[0][0]); xp = bx + pxe*W; } else xp += pxe*W;
+      await tick(); }
+    const f = xs.length >= 2 && lsq(xs); if(f && f.m > 0.1 && f.m < 0.4){ gs.px = f.m; gs.x0 = f.b; }
+  }
+  { const pts = [], win = mode === 'full' ? 0.04 : 0.02; let pye = gs.py;
+    const goDir = async dir => { let yp = yc + dir*pye*W, last = dir === 1 ? 1 : -1;
+      for(let r = dir; Math.abs(r) <= 4; r += dir){ const pos = Array.from({length:gs.cols}, (_,c) => [(gs.x0+c*gs.px)*W, yp]); const pool = poolAt(pos);
+        let by = null, bs = TH; for(let dy=-win; dy<=win+1e-6; dy+=0.004){ const y = yp + dy*W; let s = 0, n = 0;
+          for(let c=0;c<gs.cols;c++){ const v = scoreAt(pool, (gs.x0+c*gs.px)*W, y); if(v >= 0){ s += v; n++; } } if(n >= gs.cols-1 && s/n > bs){ bs = s/n; by = y; } }
+        if(by == null) break; pts.push([r, by]); yp = by + dir*pye*W; await tick(); } };
+    { const pos = Array.from({length:gs.cols}, (_,c) => [(gs.x0+c*gs.px)*W, yc]); const pool = poolAt(pos); let by = null, bs = TH;
+      for(let dy=-win; dy<=win+1e-6; dy+=0.004){ const y = yc + dy*W; let s = 0, n = 0; for(let c=0;c<gs.cols;c++){ const v = scoreAt(pool, (gs.x0+c*gs.px)*W, y); if(v >= 0){ s += v; n++; } }
+        if(n >= gs.cols-1 && s/n > bs){ bs = s/n; by = y; } } if(by != null){ pts.push([0, by]); yc = by; } }
+    await goDir(1); await goDir(-1);
+    const f = pts.length >= 2 && lsq(pts);
+    if(f && f.m/W > 0.12 && f.m/W < 0.4){ gs.py = f.m/W; yc = f.b; } else if(pts.length){ yc = pts[0][1] - pts[0][0]*gs.py*W; }
+  }
+  Object.assign(G, {x0:gs.x0, px:gs.px, py:gs.py});
+  // B. affinage par descente de coordonnées sur (taille, pas x, marge x, yc, pas y), candidats recalculés à chaque passe
+  const g = {...G}; const scale0 = mode === 'full' ? 0.5 : 0.3; let finalScore = 0;
+  for(let pass=0; pass<3; pass++){
+    const all = cellRects(g, Wp, Hp, yc), rows = [...new Set(all.map(c=>c.r))].sort((a,b)=>a-b);
+    const rowScore = {}; for(const r of rows){ const cs = all.filter(c=>c.r===r); rowScore[r] = cs.reduce((a,c)=>a+bestCoarse(cellDescr(sat,c.x,c.y,c.w,c.h,D2)),0)/cs.length; }
+    let good = rows.filter(r => rowScore[r] > 0.5); if(good.length < 2) good = rows.slice().sort((a,b)=>rowScore[b]-rowScore[a]).slice(0,4).sort((a,b)=>a-b);
+    const pick = new Set([good[0], good[good.length-1], good[Math.floor(good.length/3)], good[Math.floor(2*good.length/3)]]);   // lignes étalées
+    const cells = all.filter(c => pick.has(c.r));
+    const cand = cells.map(c => topCoarse(cellDescr(sat,c.x,c.y,c.w,c.h,D2), 25).idx);
+    const k = scale0 * Math.pow(0.5, pass), steps = 9;
+    const sweep = async (apply, span) => { let bv = null, bs = -9; for(let i=0;i<steps;i++){ const d = (i-(steps-1)/2)/((steps-1)/2)*span;
+        const t = {...g}, tyc = apply(t, d); const sc = evalGeom(sat, Wp, t, tyc==null?yc:tyc, cells, cand); if(sc > bs){ bs = sc; bv = {t, yc: tyc==null?yc:tyc}; } }
+      Object.assign(g, bv.t); yc = bv.yc; finalScore = bs; await tick(); };
+    await sweep((t,d)=>{ const f=1+d; t.cw=g.cw*f; t.ch=g.ch*f; }, .09*k);
+    await sweep((t,d)=>{ t.px=g.px*(1+d); }, .07*k);
+    await sweep((t,d)=>{ t.x0=g.x0+d; }, .014*k);
+    await sweep((t,d)=>{ return yc + d*Wp; }, .014*k);
+    await sweep((t,d)=>{ t.py=g.py*(1+d); }, .09*k);
+  }
+  if(finalScore > 0.3){ G.x0=g.x0; G.cw=g.cw; G.ch=g.ch; G.px=g.px; G.py=g.py; }
+  G.calibrated = true; G.y0 = yc;
+  return {y0:yc, score:finalScore};
+}
+
+const SHOTS = [];      // {file, name}
+const TRACE = [];      // debug
+const MIN_STD = 15;    // cases quasi uniformes (fond vide) rejetées
+let REVIEW = [];       // cellules à vérifier
+async function prepShot(file){
+  const bmp = await createImageBitmap(file), sc = Math.min(1, WORK_W/bmp.width), Wp = Math.round(bmp.width*sc), Hp = Math.round(bmp.height*sc);
+  const cv = document.createElement('canvas'); cv.width=Wp; cv.height=Hp; const g = cv.getContext('2d', {willReadFrequently:true}); g.imageSmoothingQuality='high'; g.drawImage(bmp,0,0,Wp,Hp); bmp.close && bmp.close();
+  return {cv, Wp, Hp, sat: buildSAT(g.getImageData(0,0,Wp,Hp).data, Wp, Hp)};
+}
+async function matchShot(file, ctx, y0){
+  const {cv, Wp, Hp, sat} = ctx, cells = cellRects(G, Wp, Hp, y0); let acc=0, unc=0, rej=0; const overlay = [];
+  for(const c of cells){
+    const q2 = cellDescr(sat,c.x,c.y,c.w,c.h,D2), q1 = cellDescr(sat,c.x,c.y,c.w,c.h,D1);
+    const alts = matchDescr(q2, q1);
+    const top = alts[0], sc1 = Math.round(top.score*100), margin = alts[1] ? top.score - alts[1].score : 1;
+    let status = 'rej';
+    if(q1.std < MIN_STD) status = 'rej';
+    else if(sc1 >= P.accept && (margin >= 0.015 || sc1 >= P.accept+18)) status = 'ok'; else if(sc1 >= P.uncertain) status = 'unc';
+    if(status === 'ok'){ addToBox(top.owner, top.pre); acc++; }
+    else if(status === 'unc'){ unc++; const crop = document.createElement('canvas'); crop.width=crop.height=72; crop.getContext('2d').drawImage(cv, c.x, c.y, c.w, c.h, 0,0,72,72); REVIEW.push({crop, alts}); }
+    else rej++;
+    overlay.push({...c, status});
+    TRACE.push({shot:file.name||'', r:c.r, c:c.c, status, owner:top.owner, score:sc1, margin:+margin.toFixed(3), std:+q1.std.toFixed(1), alts:alts.map(a=>a.owner)});
+  }
+  drawPreview(cv, overlay);
+  log(`  ${cells.length} cases : ${acc} reconnues, ${unc} à vérifier, ${rej} ignorées`);
+}
+function drawPreview(src, overlay){
+  const p = $('#prev'); p.style.display='block'; p.width = src.width; p.height = src.height; const g = p.getContext('2d'); g.drawImage(src,0,0);
+  g.lineWidth = 3; for(const c of overlay){ g.strokeStyle = c.status==='ok' ? '#3ccf7a' : c.status==='unc' ? '#f2b632' : '#ef5350'; g.strokeRect(c.x, c.y, c.w, c.h); }
+}
+async function runShots(files, opts){
+  opts = opts || {};
+  if(!DB.cards.length){ alert('Base non chargée.'); return; } if(!T.n){ alert('Indexe d\'abord les miniatures (étape 2).'); return; }
+  REVIEW = []; const bar = $('#shBar'); let i = 0;
+  try{
+    if(!opts.manual && (opts.recal || !G.calibrated)){          // phase 1 : apprentissage de la grille sur jusqu'à 3 captures, on garde la meilleure
+      let best = null; const base = {...G};
+      for(const f of files.slice(0,3)){ Object.assign(G, base); const ctx = await prepShot(f); const cal = await calibrate(ctx.sat, ctx.Wp, ctx.Hp, 'full');
+        log(`🔧 calibrage ${f.name||''} : score ${cal.score.toFixed(2)}`); if(!best || cal.score > best.score) best = {score:cal.score, g:{...G}, file:f}; await tick(); }
+      // itérations supplémentaires sur la meilleure capture : chaque passe repart de la grille précédente
+      { const f = best.file; let prev = best.score; for(let k=0;k<3;k++){ Object.assign(G, best.g); const ctx = await prepShot(f); const cal = await calibrate(ctx.sat, ctx.Wp, ctx.Hp, 'full');
+          log(`🔧 affinage ${k+1} : score ${cal.score.toFixed(2)}`); if(cal.score > best.score + 0.01){ best = {score:cal.score, g:{...G}, file:f}; } else break; await tick(); } }
+      Object.assign(G, best.g); G.calibrated = true; log(`🔧 grille retenue (score ${best.score.toFixed(2)})${best.score < 0.7 ? ' ⚠ incertaine — vois « Réglages de la grille »' : ''}`);
+    }
+    for(const f of files){ log(`📷 ${f.name || 'capture'}`);
+      try{ const ctx = await prepShot(f); const cal = await calibrate(ctx.sat, ctx.Wp, ctx.Hp, opts.manual ? 'yonly' : 'light');
+        if(!opts.manual && cal.score < 0.6) log('  ⚠ grille peu sûre sur cette capture'); await matchShot(f, ctx, cal.y0); }
+      catch(e){ log('  erreur : '+e.message); console.error(e); }
+      bar.style.width = (100*(++i)/files.length)+'%'; await tick(); }
+  } finally { saveBox(); renderReview(); renderBox(); log(`➡ ma box : ${BOX.size} persos distincts`); }
+}
+function renderReview(){
+  $('#revCard').style.display = REVIEW.length ? 'block' : 'none'; $('#revN').textContent = REVIEW.length; const L = $('#revList'); L.innerHTML = '';
+  REVIEW.forEach((r, idx) => {
+    const row = document.createElement('div'); row.className='rev'; row.appendChild(r.crop);
+    const alts = document.createElement('div'); alts.className='alts';
+    for(const a of r.alts){ const c = DB.byId.get(a.owner); if(!c) continue; const im = document.createElement('img'); im.src = c.image; im.alt=''; im.title = `${stripTitle(c)} (${Math.round(a.score*100)})`;
+      im.onclick = () => { addToBox(a.owner, a.pre); saveBox(); REVIEW[idx] = null; REVIEW = REVIEW.filter(Boolean); renderReview(); renderBox(); }; alts.appendChild(im); }
+    const no = document.createElement('button'); no.className='b s'; no.textContent='Ignorer'; no.onclick = () => { REVIEW.splice(idx,1); renderReview(); };
+    row.appendChild(alts); row.appendChild(no); L.appendChild(row);
+  });
+}
+
+/* =========================================================================
+   6. MA BOX
+   ========================================================================= */
+const F = {rar:new Set(), typ:new Set(), ver:new Set(), q:''};
+const VERD = [['gem','💎 Pépite'],['bon','✅ Bon'],['util','🟡 Correct'],['faible','⬇️ Faible'],['fodder','🗑️ Fodder'],['dorm','😴 Dormant'],['eza','⭐ EZA dispo']];
+function chips(box, items, set){ box.innerHTML=''; for(const [k,l] of items){ const s=document.createElement('span'); s.className='chip'+(set.has(k)?' on':''); s.textContent=l; s.onclick=()=>{ set.has(k)?set.delete(k):set.add(k); renderBox(); }; box.appendChild(s); } }
+function renderBox(){
+  chips($('#fR'), ['LR','UR','SSR'].map(x=>[x,x]), F.rar); chips($('#fT'), ['AGL','TEQ','INT','STR','PHY'].map(x=>[x,x]), F.typ); chips($('#fV'), VERD, F.ver);
+  const q = F.q.toLowerCase(); const rows = ownedCards().map(({c,i}) => ({c,i,v:verdict(c,i)}))
+    .filter(({c,i,v}) => (!F.rar.size||F.rar.has(c.rarity)) && (!F.typ.size||F.typ.has(c.type)) && (!q || c.search.includes(q))
+      && (!F.ver.size || [...F.ver].some(k => k==='dorm' ? i.pre : k==='eza' ? c.eza : v.k===k)))
+    .sort((a,b) => (b.v.ts - a.v.ts) || (RAR_SCORE[b.c.rarity]-RAR_SCORE[a.c.rarity]) || (b.v.ls-a.v.ls));
+  const g = $('#boxGrid'); g.innerHTML = rows.length ? '' : '<div class="empty">Ta box est vide. Va dans « Scanner » pour ajouter des captures.</div>';
+  for(const {c,i,v} of rows){ const t = document.createElement('div'); t.className='tile '+c.type; t.innerHTML = `<img loading="lazy" src="${esc(c.image)}" alt="${esc(c.name)}"><span class="v">${v.icon}</span>${i.pre?'<span class="d">😴</span>':''}`; t.onclick=()=>showCard(c.id); g.appendChild(t); }
+  $('#exp').value = JSON.stringify({v:1, box:[...BOX]});
+}
+function showCard(id){
+  const c = DB.byId.get(String(id)); if(!c) return; const info = BOX.get(String(id)) || {}, v = verdict(c, info);
+  const lead = txt(c.leader && c.leader.base), ps = c.passive && txt(c.passive.base);
+  $('#sheet').innerHTML = `<div class="hero"><img src="${esc(c.image)}" alt=""><div><b>${esc(c.name)}</b><br><span class="pill">${esc(c.title)}</span><br><span class="pill">${c.rarity}</span><span class="pill">${c.type}</span><span class="pill">${esc(c.cls)}</span><span class="pill">coût ${c.cost}</span></div></div>
+   <div class="kv"><b class="v-${v.k}">${v.icon} ${v.label}</b> ${v.reasons.map(r=>`<span class="pill">${esc(r)}</span>`).join('')}</div>
+   ${v.flags.map(f=>`<div class="kv">➜ ${esc(f)}</div>`).join('')}
+   <div class="kv"><b>Leader</b> ${esc(lead)}</div>
+   <div class="kv"><b>Passif</b> ${esc(c.passive&&c.passive.name||'')} — <span style="color:var(--mut)">${esc((ps||'').slice(0,320))}</span></div>
+   <div class="kv"><b>Liens</b> ${(c._links||[]).map(l=>`<span class="pill" title="${esc(DB.linkFx[l]||'')}">${esc(l)}</span>`).join('')}</div>
+   <div class="kv"><b>Catégories</b> ${(c.categories||[]).map(l=>`<span class="pill">${esc(l)}</span>`).join('')}</div>
+   <div class="row" style="margin-top:10px">${BOX.has(String(id))?`<button class="b s" onclick="rmCard('${id}')">Retirer de ma box</button>`:''}<button class="b" onclick="closeModal()">Fermer</button></div>`;
+  $('#modal').classList.add('on');
+}
+function closeModal(){ $('#modal').classList.remove('on'); }
+function rmCard(id){ BOX.delete(String(id)); saveBox(); renderBox(); closeModal(); }
+
+/* =========================================================================
+   7. TEAMS
+   ========================================================================= */
+const unitValue = (c, i) => tierScore(c) + RAR_SCORE[c.rarity] + Math.min(25, ((c.stats&&c.stats.atk&&c.stats.atk[1])||0)/1000) - (i && i.pre ? 10 : 0);
+function linkScore(a, b){ let s=0; for(const l of a._links) if(b._links.includes(l)) s += 5 + (/Ki \+/.test(DB.linkFx[l]||'') ? 3 : 0); return s; }
+function buildTeam(L, pool){
+  const cl = L.c._lead; if(!cl.length) return null; const top = Math.max(...cl.map(x=>x.score));
+  const cand = pool.filter(u => u.c.id !== L.c.id).map(u => { const b = buffFor(u.c, cl); return {...u, b, base: unitValue(u.c,u.i) + (b>=top*.8 ? 30 : b>0 ? 12 : -40)}; }).filter(u => u.b > 0);
+  const picked = []; const left = cand.slice();
+  while(picked.length < 5 && left.length){
+    let bi=-1, bs=-1e9; left.forEach((u,k) => { const s = u.base + linkScore(u.c, L.c)*1.2 + picked.reduce((a,p)=>a+linkScore(u.c,p.c),0); if(s>bs){ bs=s; bi=k; } });
+    picked.push(left.splice(bi,1)[0]);
+  }
+  const syn = picked.reduce((a,p)=>a+linkScore(p.c,L.c),0) + picked.reduce((a,p,x)=>a+picked.slice(x+1).reduce((b,q)=>b+linkScore(p.c,q.c),0),0);
+  const shared = {}; for(const p of picked) for(const l of p.c._links) if(L.c._links.includes(l)) shared[l]=(shared[l]||0)+1;
+  return {leader:L, members:picked, eligible:cand.length, score: top*0.35 + unitValue(L.c,L.i)*1.5 + picked.reduce((a,p)=>a+p.base,0) + syn, shared};
+}
+function renderTeams(){
+  const pool = ownedCards(), out = $('#teamsOut'); const sel = $('#ldSel'), cur = sel.value;
+  if(!pool.length){ out.innerHTML = '<div class="empty">Scanne d\'abord ta box.</div>'; return; }
+  const leaders = pool.filter(u => u.c._ls >= 100 && (u.c.rarity==='LR'||u.c.rarity==='UR')).sort((a,b)=>b.c._ls-a.c._ls);
+  sel.innerHTML = '<option value="">Meilleur leader automatique</option>' + leaders.slice(0,120).map(u=>`<option value="${u.c.id}">${esc(u.c.name)} — ${esc(u.c.title)}</option>`).join(''); sel.value = cur;
+  let teams = (cur ? leaders.filter(u=>u.c.id===cur) : leaders).map(L => buildTeam(L, pool)).filter(Boolean);
+  teams.sort((a,b)=>b.score-a.score);
+  const seen = new Set(); teams = teams.filter(t => { const k = t.leader.c.name+'|'+t.leader.c.type; if(!cur && seen.has(k)) return false; seen.add(k); return true; }).slice(0, cur?1:8);
+  if(!teams.length){ out.innerHTML = '<div class="empty">Pas de leader exploitable dans ta box.</div>'; return; }
+  out.innerHTML = teams.map((t,n) => {
+    const th = (u,ld) => `<div class="tile ${u.c.type} ${ld?'ld':''}" onclick="showCard('${u.c.id}')"><img src="${esc(u.c.image)}" alt=""><span class="v">${verdict(u.c,u.i).icon}</span></div>`;
+    const sh = Object.entries(t.shared).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([l,k])=>`<span class="pill">${esc(l)} ×${k}</span>`).join('');
+    return `<div class="card"><h2>#${n+1} · ${esc(t.leader.c.name)} <span class="chip">${t.leader.c.rarity} ${t.leader.c.type}</span></h2>
+      <p>${esc(txt(t.leader.c.leader.base))}</p>
+      <div class="team">${th(t.leader,true)}${t.members.map(m=>th(m,false)).join('')}${th(t.leader,true)}</div>
+      <div class="kv">${t.members.length<5?`<b style="color:var(--bad)">Team incomplète : seulement ${t.members.length} perso(s) éligible(s)</b> — il te faut des persos de la catégorie/type du leader.`:`${t.eligible} persos éligibles dans ta box`} ${sh?'· liens partagés avec le leader : '+sh:''}</div>
+      <div class="kv" style="color:var(--mut)">${t.members.map(m=>esc(m.c.name)).join(' · ')}</div></div>`; }).join('');
+}
+
+/* =========================================================================
+   8. BILAN
+   ========================================================================= */
+function renderBilan(){
+  const o = ownedCards().map(({c,i}) => ({c,i,v:verdict(c,i)})), el = $('#bilanOut');
+  if(!o.length){ el.innerHTML = '<div class="empty">Scanne d\'abord ta box.</div>'; return; }
+  const by = k => o.filter(x => x.v.k===k), cnt = r => o.filter(x=>x.c.rarity===r).length;
+  const sec = (title, list, note) => !list.length ? '' : `<div class="card"><h2>${title} <span class="chip">${list.length}</span></h2>${note?`<p>${note}</p>`:''}<div class="grid">${list.map(x=>`<div class="tile ${x.c.type}" onclick="showCard('${x.c.id}')"><img loading="lazy" src="${esc(x.c.image)}" alt=""><span class="v">${x.v.icon}</span></div>`).join('')}</div></div>`;
+  const dorm = o.filter(x => x.i.pre && (x.v.ts>=62 || x.c.rarity==='LR' || x.v.ls>=450));
+  const eza = o.filter(x => x.c.eza && x.v.ts>=55);
+  const ldrs = o.filter(x=>x.v.ls>=450).sort((a,b)=>b.v.ls-a.v.ls).slice(0,18);
+  el.innerHTML = `<div class="card"><h2>Résumé</h2><div class="row"><span class="chip">${o.length} persos reconnus</span><span class="chip">LR ${cnt('LR')}</span><span class="chip">UR ${cnt('UR')}</span><span class="chip">SSR ${cnt('SSR')}</span><span class="chip ok">💎 ${by('gem').length}</span><span class="chip ok">✅ ${by('bon').length}</span><span class="chip warn">🟡 ${by('util').length}</span><span class="chip bad">🗑️ ${by('fodder').length+by('faible').length}</span></div>
+    <p>Verdicts basés sur la tier list DokkanStats actuelle et la force du leader skill — indicatifs. La reconnaissance ne voit pas ton niveau, tes Super Attaques ni ton potentiel : un perso 💎 sous-développé reste à monter.</p></div>`
+    + sec('😴 Dormants à fort potentiel (non éveillés)', dorm, 'Ces persos sont dans ta box sous leur forme de base mais leur forme éveillée est forte : va chercher leurs médailles !')
+    + sec('💎 Pépites', by('gem')) + sec('⭐ Z-Éveil (EZA) disponible et rentable', eza, 'Si ce n\'est pas déjà fait, le Z-Éveil améliore leur passif et leur leader.')
+    + sec('👑 Meilleurs leaders', ldrs) + sec('✅ Bons à jouer', by('bon')) + sec('🗑️ Fodder / à vendre', by('fodder'), 'SSR sans tier : à vendre (zénis) ou comme matériel d\'entraînement.');
+}
+
+/* =========================================================================
+   9. BRANCHEMENTS
+   ========================================================================= */
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on', x===b)); document.querySelectorAll('section').forEach(s=>s.classList.toggle('on', s.id==='t-'+b.dataset.t));
+  if(b.dataset.t==='box') renderBox(); if(b.dataset.t==='teams') renderTeams(); if(b.dataset.t==='bilan') renderBilan(); window.scrollTo(0,0); });
+$('#modal').onclick = e => { if(e.target.id==='modal') closeModal(); };
+$('#btnDb').onclick = () => loadDb();
+$('#fileCards').onchange = async e => { const f=e.target.files[0]; if(!f) return; const j = JSON.parse(await f.text()); kv.set('cards', j); ingestCards(j); $('#dbStat').innerHTML=`<span class="chip ok">${DB.cards.length} cartes (fichier local)</span>`; };
+$('#btnThumbs').onclick = () => indexOnline();
+$('#fileThumbs').onchange = e => indexFromFiles([...e.target.files]);
+$('#fileShots').onchange = e => { const fs=[...e.target.files]; fs.forEach(f=>SHOTS.push(f)); runShots(fs); e.target.value=''; };
+$('#btnClear').onclick = () => { if(confirm('Vider ma box ?')){ BOX.clear(); saveBox(); renderBox(); REVIEW=[]; renderReview(); SHOTS.length=0; } };
+$('#btnRerun').onclick = () => { readGridInputs(); G.ch = G.cw*0.994; BOX.clear(); runShots(SHOTS, {manual:true}); };
+$('#btnRecal').onclick = () => { readGridInputs(); G.calibrated=false; BOX.clear(); runShots(SHOTS, {recal:true}); };
+$('#q').oninput = e => { F.q = e.target.value; renderBox(); };
+$('#btnTeams').onclick = renderTeams; $('#ldSel').onchange = renderTeams;
+$('#btnCopy').onclick = async () => { try{ await navigator.clipboard.writeText($('#exp').value); }catch(e){ $('#exp').select(); document.execCommand('copy'); } };
+$('#btnImp').onclick = () => { try{ const j = JSON.parse($('#imp').value); for(const [id,i] of j.box){ const e=BOX.get(String(id)); if(!e) BOX.set(String(id),{n:1,pre:!!i.pre}); else e.pre = e.pre && !!i.pre; } saveBox(); renderBox(); $('#imp').value=''; }catch(e){ alert('Format invalide.'); } };
+
+window.__dokkan = {DB, T, get BOX(){return BOX;}, G, P, TRACE, runShots, indexOnline, loadDb, verdict, buildTeam, parseLeader, get REVIEW(){return REVIEW;}};   // pour tests
+
+(async function init(){
+  loadBox(); syncGridInputs(); renderBox();
+  if(await loadDb()){ if(await loadIndexCache()) log('Index de miniatures chargé depuis le cache.'); else $('#thStat').textContent='Pas encore indexées — touche « Indexer en ligne ».'; }
+})();
+</script>
+</body>
+</html>
