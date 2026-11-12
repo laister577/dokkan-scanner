@@ -393,7 +393,7 @@ function matchDescr(q2, q1){
 /* =========================================================================
    5. CAPTURES : grille + calibration
    ========================================================================= */
-const G = {cols:5, x0:.0271, cw:.1403, px:.2016, ch:.1395, py:.2333, y0:0, calibrated:false};
+const G = {cols:5, x0:.0195, cw:.1535, px:.2019, ch:.1535, py:.2349, y0:0, calibrated:false, rows:null};
 const P = {accept:55, uncertain:38};
 function syncGridInputs(){ $('#gCols').value=G.cols; $('#gX0').value=(G.x0*100).toFixed(2); $('#gCw').value=(G.cw*100).toFixed(2); $('#gPx').value=(G.px*100).toFixed(2); $('#gPy').value=(G.py*100).toFixed(2); $('#gTh').value=P.accept; }
 function readGridInputs(){ G.cols=Math.max(1,+$('#gCols').value||5); G.x0=(+$('#gX0').value||2.7)/100; G.cw=(+$('#gCw').value||14)/100; G.ch=G.cw*0.994; G.px=(+$('#gPx').value||20)/100; G.py=(+$('#gPy').value||23)/100; P.accept=+$('#gTh').value||55; }
@@ -455,6 +455,7 @@ async function calibrate(sat, Wp, Hp, mode){           // mode : 'full' (apprend
       for(let dy=-win; dy<=win+1e-6; dy+=0.004){ const y = yc + dy*W; let s = 0, n = 0; for(let c=0;c<gs.cols;c++){ const v = scoreAt(pool, (gs.x0+c*gs.px)*W, y); if(v >= 0){ s += v; n++; } }
         if(n >= gs.cols-1 && s/n > bs){ bs = s/n; by = y; } } if(by != null){ pts.push([0, by]); yc = by; } }
     await goDir(1); await goDir(-1);
+    G.rows = pts.length ? {min:Math.min(...pts.map(q=>q[0])), max:Math.max(...pts.map(q=>q[0]))} : null;
     const f = pts.length >= 2 && lsq(pts);
     if(f && f.m/W > 0.12 && f.m/W < 0.4){ gs.py = f.m/W; yc = f.b; } else if(pts.length){ yc = pts[0][1] - pts[0][0]*gs.py*W; }
   }
@@ -488,12 +489,22 @@ const TRACE = [];      // debug
 const MIN_STD = 15;    // cases quasi uniformes (fond vide) rejetées
 let REVIEW = [];       // cellules à vérifier
 async function prepShot(file){
-  const bmp = await createImageBitmap(file), sc = Math.min(1, WORK_W/bmp.width), Wp = Math.round(bmp.width*sc), Hp = Math.round(bmp.height*sc);
-  const cv = document.createElement('canvas'); cv.width=Wp; cv.height=Hp; const g = cv.getContext('2d', {willReadFrequently:true}); g.imageSmoothingQuality='high'; g.drawImage(bmp,0,0,Wp,Hp); bmp.close && bmp.close();
-  return {cv, Wp, Hp, sat: buildSAT(g.getImageData(0,0,Wp,Hp).data, Wp, Hp)};
+  const bmp = await createImageBitmap(file);
+  // bandes noires latérales (captures plus larges que l'écran de jeu) : on ne garde que la zone utile
+  const sm = document.createElement('canvas'), sw = Math.min(400, bmp.width); sm.width = sw; sm.height = Math.max(1, Math.round(bmp.height*sw/bmp.width));
+  const sg = sm.getContext('2d', {willReadFrequently:true}); sg.drawImage(bmp, 0, 0, sm.width, sm.height); const dd = sg.getImageData(0,0,sm.width,sm.height).data;
+  const colMean = x => { let t = 0, n = 0; for(let y=0;y<sm.height;y+=2){ const i=(y*sm.width+x)*4; t += dd[i]+dd[i+1]+dd[i+2]; n++; } return t/n/3; };
+  let l = 0, r = sm.width-1; while(l < r && colMean(l) < 14) l++; while(r > l && colMean(r) < 14) r--;
+  const k = bmp.width/sm.width, sx = Math.floor(l*k), sW = Math.max(50, Math.min(bmp.width - sx, Math.ceil((r+1-l)*k)));
+  const sc = Math.min(1, WORK_W/sW), Wp = Math.round(sW*sc), Hp = Math.round(bmp.height*sc);
+  const cv = document.createElement('canvas'); cv.width=Wp; cv.height=Hp; const g = cv.getContext('2d', {willReadFrequently:true}); g.imageSmoothingQuality='high';
+  g.drawImage(bmp, sx, 0, sW, bmp.height, 0, 0, Wp, Hp); bmp.close && bmp.close();
+  return {cv, Wp, Hp, sat: buildSAT(g.getImageData(0,0,Wp,Hp).data, Wp, Hp), crop:{x:sx, w:sW, full:bmp.width}};
 }
 async function matchShot(file, ctx, y0){
-  const {cv, Wp, Hp, sat} = ctx, cells = cellRects(G, Wp, Hp, y0); let acc=0, unc=0, rej=0; const overlay = [];
+  const {cv, Wp, Hp, sat} = ctx; let cells = cellRects(G, Wp, Hp, y0);
+  if(G.rows && G.rows.max - G.rows.min >= 1) cells = cells.filter(c => c.r >= G.rows.min && c.r <= G.rows.max + 1);     // pas d'entête/pied de page
+  let acc=0, unc=0, rej=0; const overlay = [];
   for(const c of cells){
     const q2 = cellDescr(sat,c.x,c.y,c.w,c.h,D2), q1 = cellDescr(sat,c.x,c.y,c.w,c.h,D1);
     const alts = matchDescr(q2, q1);
